@@ -16,73 +16,55 @@ def Start():
 ####################################################################################################
 def MainMenu():
 
-	oc = ObjectContainer()
-	content = HTML.ElementFromURL(CW_SHOWS_LIST)
-
-	for item in content.xpath('//ul[@id="shows-all-list"]/li/div'):
-		link = item.xpath('./a')[0].get('href').split('/')[2]
-		link = EP_URL % link
-		title = item.xpath('./following-sibling::text()')[0].strip()
-		thumb = item.xpath('./a/img')[0].get('src')
-
-		if not thumb.startswith('http://'):
-			thumb = CW_ROOT + thumb
-
-		oc.add(DirectoryObject(
-			key=Callback(EpList, url=link, title=title),
-			title=title,
-			thumb=Resource.ContentsOfURLWithFallback(url=thumb, fallback='icon-default.png'))
-		)
-
-	return oc
+    oc = ObjectContainer()
+    pageUrl=TheCW_SHOWS_LIST
+    content = HTML.ElementFromURL(pageUrl)
+    for item in content.xpath('//div[@class="shows-current"]//a[@class="hublink"]'):
+	link = item.get('href').replace("/shows","")
+	link=EP_URL + link
+	link=link.replace('video//','video/')
+	title = item.xpath(".//img")[0].get('title')
+	title=title.replace("-"," ").title()
+	thumb=item.xpath(".//img")[0].get('src')
+	if not thumb.startswith('http://'):
+	    thumb = TheCW_ROOT + thumb
+	oc.add(DirectoryObject(key=Callback(EpList, pageUrl=link, title=title), title=title, thumb=Resource.ContentsOfURLWithFallback(url=thumb, fallback='icon-default.png')))
+    return oc
 
 ####################################################################################################
-def EpList(url, title):
+def EpList(pageUrl, title):
+    oc = ObjectContainer(title2=title)
+    content = HTML.ElementFromURL(pageUrl)
+    for item in content.xpath('//div[contains(@class,"videowrapped slide full-episodes")]'):
+	link = item.xpath('.//a[@class="thumbLink"]')[0].get('href')
+	if not link.startswith('http://'):
+	    link = TheCW_ROOT + link
+	Log(link)
+	thumb = item.xpath(".//img")[0].get('src')
+	if not thumb.startswith('http://'):
+	    thumb = TheCW_ROOT + thumb
+	Log(thumb)
+	video_title = item.xpath('.//p[@class="et"]')[0].text.title()
+	Log(video_title)
+	details = item.xpath('.//p[@class="d2"]/text()')
+	Log(details)
+	summary = item.xpath('.//p[@class="d3"]')[0].text
 
-	oc = ObjectContainer(title2=title)
-	content = HTML.ElementFromURL(url)
-	urls = []
+	try:
+	    season_and_episode = RE_SEASON_EP.search(details[0]).groupdict()
+	    season = int(season_and_episode['season'])
+	    epIndex = int(season_and_episode['episode'])
+	except:
+	    season = None
+	    epIndex = None
+	try:
+	    date = Datetime.ParseDate(details[1].split('Original Air Date:')[1]).date()
+	except:
+	    date = None
 
-	for item in content.xpath('//div[contains(@class, "videotabrows_")]'):
-		link = item.xpath(".//a")[0].get('href')
-
-		if link in urls:
-			continue
-		else:
-			urls.append(link)
-
-		if not link.startswith('http://'):
-			link = CW_ROOT + link
-
-		thumb = item.xpath(".//img")[0].get('src').rsplit('_',1)[0] + '_640x360.jpg'
-
-		if not thumb.startswith('http://'):
-			thumb = CW_ROOT + thumb
-
-		video_title = item.xpath('.//p[@class="header"]')[0].text.title().replace("'S", "'s").replace("'M", "'m").replace("Cw", "CW")
-		details = item.xpath('.//div[@class="hoverinfo-lower"]/p//text()')
-		runtime = details[-2].strip().split(':')
-		duration = (int(runtime[0])*60 + int(runtime[1]))*1000
-		summary = details[-1].strip()
-
-		try:
-			season_and_episode = RE_SEASON_EP.search(details[0]).groupdict()
-			season = int(season_and_episode['season'])
-			epIndex = int(season_and_episode['episode'])
-		except:
-			season = None
-			epIndex = None
-
-		try:
-			date = Datetime.ParseDate(details[1].split('Original Air Date:')[1]).date()
-		except:
-			date = None
-
-		if date:
-			oc.add(EpisodeObject(url=link, title=video_title, show=title, index=epIndex, season=season, summary=summary, duration=duration,
-			originally_available_at=date, thumb=Resource.ContentsOfURLWithFallback(url=thumb, fallback='icon-default.png')))
-		else:
-			oc.add(VideoClipObject(url=link, title=video_title, summary=summary, duration=duration,
-			thumb=Resource.ContentsOfURLWithFallback(url=thumb, fallback='icon-default.png')))
-
-	return oc
+	if date:
+	    oc.add(EpisodeObject(url=link, title=video_title, show=title, index=epIndex, season=season, summary=summary,
+		originally_available_at=date, thumb=Resource.ContentsOfURLWithFallback(url=thumb, fallback='icon-default.png')))
+	else:
+	    oc.add(VideoClipObject(url=link, title=video_title, summary=summary, thumb=Resource.ContentsOfURLWithFallback(url=thumb, fallback='icon-default.png')))
+    return oc
