@@ -4,6 +4,8 @@ CW_ROOT = 'http://www.cwtv.com'
 CW_SHOWS_LIST = 'http://www.cwtv.com/shows'
 EP_URL = 'http://www.cwtv.com/cw-video'
 
+THUMB_PROXY = 'http://www.uswebproxy.com/?q=%s'
+
 ####################################################################################################
 def Start():
 
@@ -21,11 +23,12 @@ def MainMenu():
 		url = '%s/%s' % (EP_URL, show)
 		title = String.CapitalizeWords(show.replace('-', ' '))
 		thumb = item.xpath('.//img/@src')[0]
+		thumb_alt = THUMB_PROXY % String.Quote(thumb)
 
 		oc.add(DirectoryObject(
 			key = Callback(Episodes, url=url, title=title),
 			title = title,
-			thumb = Resource.ContentsOfURLWithFallback(url=thumb)
+			thumb = Resource.ContentsOfURLWithFallback([thumb, thumb_alt])
 		))
 
 	return oc
@@ -45,6 +48,7 @@ def Episodes(url, title):
 		thumb = item.xpath('.//img/@src')[0]
 		if not thumb.startswith('http://'):
 			thumb = '%s%s' % (CW_ROOT, thumb)
+		thumb_alt = THUMB_PROXY % String.Quote(thumb)
 
 		episode_title = item.xpath('.//p[@class="et"]/text()')[0]
 		summary = item.xpath('.//p[@class="d3"]/text()')[0].split(' Watch free')[0]
@@ -73,14 +77,14 @@ def Episodes(url, title):
 				season = season,
 				summary = summary,
 				originally_available_at = date,
-				thumb = Resource.ContentsOfURLWithFallback(url=thumb)
+				thumb = Resource.ContentsOfURLWithFallback([thumb, thumb_alt])
 			))
 		else:
 			oc.add(VideoClipObject(
 				url = link,
 				title = video_title,
 				summary = summary,
-				thumb = Resource.ContentsOfURLWithFallback(url=thumb)
+				thumb = Resource.ContentsOfURLWithFallback([thumb, thumb_alt])
 			))
 
 	return oc
