@@ -40,8 +40,8 @@ def Episodes(url, title):
 	oc = ObjectContainer(title2=title)
 	html = HTML.ElementFromURL(url)
 
-	for item in html.xpath('//div[contains(@class, "full-episodes")]'):
-		url = item.xpath('./a[@class="thumbLink"]/@href')[0]
+	for item in html.xpath('//ul[@id="list_1"]/li/div/a[@class="thumbLink"]'):
+		url = item.xpath('./@href')[0]
 		if not url.startswith('http://'):
 			url = '%s%s' % (CW_ROOT, url)
 
@@ -50,21 +50,26 @@ def Episodes(url, title):
 			thumb = '%s%s' % (CW_ROOT, thumb)
 		thumb_alt = THUMB_PROXY % String.Base64Encode(thumb)
 
-		episode_title = item.xpath('.//p[@class="et"]/text()')[0]
+		episode_title = item.xpath('.//div[@class="videodetails1"]/p/text()')[0]
 		summary = item.xpath('.//p[@class="d3"]/text()')[0].split(' Watch free')[0]
 
-		details = item.xpath('.//p[@class="d2"]//text()')
-
 		try:
-			season_and_episode = RE_SEASON_EP.search(details[0]).groupdict()
-			season = int(season_and_episode['season'])
-			ep_index = int(season_and_episode['episode'])
+			season_and_episode = episode_title.split('Ep.')[1].split(')')[0]
+			if len(season_and_episode) >3:
+				season = season_and_episode[0] + season_and_episode[1]
+			else:
+				season = season_and_episode[0]
+			try: season = int(season)
+			except: season = None
+			try: ep_index = int(season_and_episode)
+			except: ep_index = None
 		except:
 			season = None
 			ep_index = None
 
 		try:
-			date = Datetime.ParseDate(details[1].split('Original Air Date: ')[1]).date()
+			date = item.xpath('.//p[@class="videodate"]//text()')[0]
+			date = Datetime.ParseDate(date.split('Original Air Date: ')[1]).date()
 		except:
 			date = None
 
@@ -81,8 +86,8 @@ def Episodes(url, title):
 			))
 		else:
 			oc.add(VideoClipObject(
-				url = link,
-				title = video_title,
+				url = url,
+				title = episode_title,
 				summary = summary,
 				thumb = Resource.ContentsOfURLWithFallback([thumb, thumb_alt])
 			))
