@@ -2,7 +2,7 @@ RE_SEASON_EP = Regex('Season (?P<season>\d+), Ep. (?P<episode>\d+)')
 
 CW_ROOT = 'http://www.cwtv.com'
 CW_SHOWS_LIST = 'http://www.cwtv.com/shows'
-EP_URL = 'http://www.cwtv.com/cw-video'
+EP_URL = 'http://www.cwtv.com/shows'
 
 ####################################################################################################
 def Start():
@@ -47,7 +47,6 @@ def Episodes(url, title):
 			thumb = '%s%s' % (CW_ROOT, thumb)
 
 		episode_title = item.xpath('.//div[@class="videodetails1"]/p/text()')[0]
-		summary = item.xpath('.//p[@class="d3"]/text()')[0].split(' Watch free')[0]
 
 		try:
 			season_and_episode = episode_title.split('Ep.')[1].split(')')[0]
@@ -76,7 +75,6 @@ def Episodes(url, title):
 				show = title,
 				index = ep_index,
 				season = season,
-				summary = summary,
 				originally_available_at = date,
 				thumb = Resource.ContentsOfURLWithFallback(thumb)
 			))
@@ -84,7 +82,6 @@ def Episodes(url, title):
 			oc.add(VideoClipObject(
 				url = url,
 				title = episode_title,
-				summary = summary,
 				thumb = Resource.ContentsOfURLWithFallback(thumb)
 			))
 
